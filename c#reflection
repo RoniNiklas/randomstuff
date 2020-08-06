@@ -1,19 +1,36 @@
 ##Post-content stuff  
 ##Working  
-        public static void PopulatePostContent(Dictionary<string, string> postContent, object obj, string? prefixInput = null, int? index = 0) {
+    public static class PostContentHelper {
+        public static void PopulatePostContent(Dictionary<string, string> postContent, object obj, string? prefix = null) {
             foreach (var propertyInfo in obj.GetType().GetProperties()) {
                 var prop = propertyInfo.GetValue(obj);
                 var list = prop as IList;
                 if (list != null && propertyInfo.PropertyType.IsGenericType) {
                     for (var i = 0; i < list.Count; i++) {
-                        PopulatePostContent(postContent, list[i], propertyInfo.Name + "[index]", i);
+                        PopulatePostContent(postContent, list[i], propertyInfo.Name + "[" + i.ToString() + "]");
                     }
                 }
                 else {
-                    postContent.Add(ParsePrefixString(propertyInfo.Name, prefixInput, index), ParsePropertyString(prop));
+                    postContent.Add(ParseKeyString(propertyInfo.Name, prefix), ParseValueString(prop));
                 }
             }
         }
+
+        private static string ParseKeyString(string name, string? prefix = null) {
+            prefix = string.IsNullOrWhiteSpace(prefix) ? "" : prefix + ".";
+            return prefix + name;
+        }
+
+        private static string ParseValueString(object? value) {
+            var date = value as DateTime?;
+            if (date != null) {
+                return date?.ToString("G", CultureInfo.CreateSpecificCulture("en-US"));
+            }
+            else {
+                return value?.ToString();
+            }
+        }
+    }
         
 Untested  
         public static void PopulatePostContent(Dictionary<string, string> postContent, List<ExpandoObject> objects, string? prefixInput = null) {
