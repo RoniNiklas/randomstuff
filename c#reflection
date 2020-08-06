@@ -1,0 +1,53 @@
+##Post-content stuff  
+##Working  
+        public static void PopulatePostContent(Dictionary<string, string> postContent, object obj, string? prefixInput = null, int? index = 0) {
+            foreach (var propertyInfo in obj.GetType().GetProperties()) {
+                var prop = propertyInfo.GetValue(obj);
+                var list = prop as IList;
+                if (list != null && propertyInfo.PropertyType.IsGenericType) {
+                    for (var i = 0; i < list.Count; i++) {
+                        PopulatePostContent(postContent, list[i], propertyInfo.Name + "[index]", i);
+                    }
+                }
+                else {
+                    postContent.Add(ParsePrefixString(propertyInfo.Name, prefixInput, index), ParsePropertyString(prop));
+                }
+            }
+        }
+        
+Untested  
+        public static void PopulatePostContent(Dictionary<string, string> postContent, List<ExpandoObject> objects, string? prefixInput = null) {
+            foreach (var (obj, index) in objects.Select((value, index) => (value, index))) {
+                foreach (var property in obj) {
+                    postContent.Add(ParsePrefixString(property.Key, prefixInput, index), ParsePropertyString(property.Value));
+                }
+            }
+        }
+##ASSERT STUFF  
+        public static void AssertMatch(ExpandoObject expected, object provided, List<string> ignoredFields) {
+            foreach (var property in expected) {
+                if (!ignoredFields.Contains(property.Key)) {
+                    var expectedValue = property.Value;
+                    var providedValue = provided.GetType().GetProperty(property.Key).GetValue(provided);
+                    Assert.Equal(expectedValue, providedValue);
+                }
+            }
+        }
+
+        public static void AssertMatch(object expected, object provided) {
+            foreach (var propertyInfo in expected.GetType().GetProperties()) {
+                var expectedValue = expected.GetType().GetProperty(propertyInfo.Name).GetValue(expected);
+                var providedValue = provided.GetType().GetProperty(propertyInfo.Name).GetValue(provided);
+                Assert.Equal(expectedValue, providedValue);
+            }
+        }
+
+        public static void AssertMatch(object expected, object provided, List<string> ignoredFields) {
+            foreach (var propertyInfo in expected.GetType().GetProperties()) {
+                if (!ignoredFields.Contains(propertyInfo.Name)) {
+                    var expectedValue = expected.GetType().GetProperty(propertyInfo.Name).GetValue(expected);
+                    var providedValue = provided.GetType().GetProperty(propertyInfo.Name).GetValue(provided);
+                    Assert.Equal(expectedValue, providedValue);
+                }
+            }
+        }
