@@ -57,6 +57,35 @@ function parseCSVContent(table, namePrefix) {
     return { blob, fileName: formatFilename(namePrefix, '.csv') };
 }
 
+function parseXLSContent(table, namePrefix) {
+    var innerHTML = formatTableContents(table.innerHTML);
+    var content = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    content = content + '<head><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+
+    content = content + `<x:Name>${namePrefix}</x:Name>`;
+
+    content = content + '<x:WorksheetOptions><x:Panes></x:Panes></x:WorksheetOptions></x:ExcelWorksheet>';
+    content = content + '</x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
+
+    content = content + "<table border='1px'>";
+    content = content + innerHTML;
+    content = content + '</table></body></html>';
+    var blob = new Blob([content], {
+        type: 'data:application/vnd.ms-excel'
+    });
+    return { blob, fileName: formatFilename(namePrefix, '.xls') };
+}
+
+function formatTableContents(innerHTML) {
+    //remove links
+    //innerHTML = innerHTML.replace(/<\/{0,1}a(.*?)>/gmu, '');
+    //or make links work
+    var port = location.port ? ':' + location.port : ''
+    var linkPrefix = window.location.protocol + window.location.hostname + port;
+    innerHTML = innerHTML.replace(/href="/gmu, 'href="' + linkPrefix);
+    return innerHTML;
+}
+
 function formatFilename(namePrefix, nameSuffix) {
     return namePrefix + " " + formatTimeString() + nameSuffix;
 }
