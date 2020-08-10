@@ -1,0 +1,84 @@
+const PARSETOEXCEL = parseCSVContent; // parseXLSContent // .csv has no row width formatting in excel. .xls gives warning on opening, since it's actually an HTML.
+const CSV_DELIMITER = ';'; // depends on the user's OS settings on whether it should be a comma or a semi-colon. 
+
+function initExcelButtons(buttonText, fileNamePrefix) {
+    $('table').not('.datepicker-grid').each(function () {
+        var btn = document.createElement('button');
+        btn.innerText = buttonText;
+        fileNamePrefix = parseFileNamePrefix(fileNamePrefix);
+        $(btn).click((event) => {
+            event.preventDefault();
+            exportOnClick(this, fileNamePrefix);
+        });
+        placeButton(btn);
+    });
+}
+
+function placeButton(btn) {
+    if ($('main').find('#details-content')[0]) {
+        $('main').find('#details-content').children().not('button').first().before(btn);
+    } else if ($('main').find('#selected-row-actions')[0]) {
+        $('main').find('#selected-row-actions').first().append($(btn));
+    } else {
+        $('main').find('hr').nextUntil('.pagination').last().before(btn);
+    }
+}
+
+function parseFileNamePrefix(fileNamePrefix) {
+    var extraHeader = $(this).parent().find('legend, h2')[0];
+    return extraHeader
+        ? extraHeader.innerText
+        : fileNamePrefix;
+}
+
+function exportOnClick(table, namePrefix) {
+    var { blob, fileName } = PARSETOEXCEL(table, namePrefix);
+    saveFile(blob, fileName);
+}
+
+function parseCSVContent(table, namePrefix) {
+    var content = [];
+    var rows = table.querySelectorAll("tr");
+
+    for (var i = 0; i < rows.length; i++) {
+        var row = [], cols = rows[i].querySelectorAll("td, th");
+
+        for (var j = 0; j < cols.length; j++) {
+            var cellText = cols[j].innerText + ' ';
+            cellText = '"' + cellText + '"';
+            row.push(cellText);
+        }
+        content.push(row.join(CSV_DELIMITER));
+    }
+    content = content.join("\n")
+    var blob = new Blob([content], {
+        type: 'text/csv'
+    });
+    return { blob, fileName: formatFilename(namePrefix, '.csv') };
+}
+
+function formatFilename(namePrefix, nameSuffix) {
+    return namePrefix + " " + formatTimeString() + nameSuffix;
+}
+
+function formatTimeString() {
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+    var yyyy = today.getFullYear();
+    var hours = today.getHours().toString().length == 1 ? '0' + today.getHours() : today.getHours();
+    var minutes = today.getMinutes().toString().length == 1 ? '0' + today.getMinutes() : today.getMinutes();
+    return dd + '.' + mm + '.' + yyyy + ' ' + hours + '.' + minutes;
+}
+
+function saveFile(blob, fileName) {
+    if (window.navigator.msSaveBlob) {
+        navigator.msSaveBlob(blob, fileName);
+    } else {
+        var link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        link.remove();
+    }
+}
