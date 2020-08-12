@@ -1,42 +1,64 @@
-const PARSETOEXCEL = parseCSVContent; // parseXLSContent // .csv has no row width formatting in excel. .xls gives warning on opening, since it's actually an HTML.
-const CSV_DELIMITER = ';'; // depends on the user's OS settings on whether it should be a comma or a semi-colon. 
+const CSV_DELIMITER = ';'; // depends on the user's OS settings on whether it should be a comma or a semi-colon. Can't really be detected via browser.
 
-function initExcelButtons(buttonText, fileNamePrefix) {
+function initExcelButtons(buttonText) {
     $('table').not('.datepicker-grid').each(function () {
-        var btn = document.createElement('button');
-        btn.innerText = buttonText;
-        fileNamePrefix = parseFileNamePrefix(fileNamePrefix);
-        $(btn).click((event) => {
+        const table = this;
+        const fileNamePrefix = parseFileNamePrefix();
+
+        const dropdown = createElement('div', '', 'dropdown')
+        const dropdownList = createElement('div', '', 'dropdown-menu')
+        const dropdownBtn = createElement('button', buttonText, 'excel-dropdown-toggle dropdown-toggle');
+        dropdownBtn.dataset.toggle = 'dropdown';
+        const csvBtn = createElement('button', 'CSV', 'dropdown-item');
+        const xlsBtn = createElement('button', 'XLS', 'dropdown-item');
+
+        $(table).before(dropdown);
+        $(dropdown).append(dropdownBtn);
+        $(dropdown).append(dropdownList);
+        $(dropdownList).append(csvBtn);
+        $(dropdownList).append(xlsBtn);
+
+        $(dropdownBtn).click((event) => {
             event.preventDefault();
-            exportOnClick(this, fileNamePrefix);
         });
-        placeButton(btn);
+
+        $(csvBtn).click((event) => {
+            event.preventDefault();
+            csvExportOnClick(table, fileNamePrefix);
+        });
+
+        $(xlsBtn).click((event) => {
+            event.preventDefault();
+            xlsExportOnClick(table, fileNamePrefix);
+        });
     });
 }
 
-function placeButton(btn) {
+function createElement(type, innerText, className) {
+    const btn = document.createElement(type);
+    btn.innerText = innerText;
+    btn.className = className;
+    return btn;
+}
+
+function parseFileNamePrefix() {
+    var fileNamePrefix = $('main').find('h1, h2, h3').first().text().trim();
     if ($('main').find('#details-content')[0]) {
-        $('main').find('#details-content').children().not('button').first().before(btn);
-    } else if ($('main').find('#selected-row-actions')[0]) {
-        $('main').find('#selected-row-actions').first().append($(btn));
-    } else {
-        $('main').find('hr').nextUntil('.pagination').last().before(btn);
+        var extraText = $('#details-content').find('legend, h2').first().text();
+        return fileNamePrefix + ' ' + extraText;
     }
+    return fileNamePrefix;
 }
 
-function parseFileNamePrefix(fileNamePrefix) {
-    var extraHeader = $(this).parent().find('legend, h2')[0];
-    return extraHeader
-        ? extraHeader.innerText
-        : fileNamePrefix;
+function csvExportOnClick(table, fileNamePrefix) {
+    saveFile(parseCSVContent(table), parseFileNameWithDateTime(fileNamePrefix, '.csv'));
 }
 
-function exportOnClick(table, namePrefix) {
-    var { blob, fileName } = PARSETOEXCEL(table, namePrefix);
-    saveFile(blob, fileName);
+function xlsExportOnClick(table, fileNamePrefix) {
+    saveFile(parseXLSContent(table, fileNamePrefix), parseFileNameWithDateTime(fileNamePrefix, '.xls'));
 }
 
-function parseCSVContent(table, namePrefix) {
+function parseCSVContent(table) {
     var content = [];
     var rows = table.querySelectorAll("tr");
 
@@ -44,60 +66,55 @@ function parseCSVContent(table, namePrefix) {
         var row = [], cols = rows[i].querySelectorAll("td, th");
 
         for (var j = 0; j < cols.length; j++) {
-            var cellText = cols[j].innerText + ' ';
-            cellText = '"' + cellText + '"';
+            var cellText = '"' + cols[j].innerText + ' "';
             row.push(cellText);
         }
         content.push(row.join(CSV_DELIMITER));
     }
     content = content.join("\n")
-    var blob = new Blob([content], {
-        type: 'text/csv'
+    return new Blob(["\uFEFF" + content], {
+        type: 'text/csv; charset=utf-18'
     });
-    return { blob, fileName: formatFilename(namePrefix, '.csv') };
 }
 
-function parseXLSContent(table, namePrefix) {
+function parseXLSContent(table, fileNamePrefix) {
     var innerHTML = formatTableContents(table.innerHTML);
     var content = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
-    content = content + '<head><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-
-    content = content + `<x:Name>${namePrefix}</x:Name>`;
-
-    content = content + '<x:WorksheetOptions><x:Panes></x:Panes></x:WorksheetOptions></x:ExcelWorksheet>';
-    content = content + '</x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
-
-    content = content + "<table border='1px'>";
-    content = content + innerHTML;
-    content = content + '</table></body></html>';
-    var blob = new Blob([content], {
-        type: 'data:application/vnd.ms-excel'
+    content += '<head><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
+    content += `<x:Name>${fileNamePrefix}</x:Name>`;
+    content += '<x:WorksheetOptions><x:Panes></x:Panes></x:WorksheetOptions></x:ExcelWorksheet>';
+    content += '</x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
+    content += "<table border='1px'>";
+    content += innerHTML;
+    content += '</table></body></html>';
+    return new Blob(["\uFEFF" + content], {
+        type: 'data:application/vnd.ms-excel; charset=utf-18'
     });
-    return { blob, fileName: formatFilename(namePrefix, '.xls') };
 }
 
 function formatTableContents(innerHTML) {
-    //remove links
-    //innerHTML = innerHTML.replace(/<\/{0,1}a(.*?)>/gmu, '');
-    //or make links work
+    // remove links
+    // innerHTML = innerHTML.replace(/<\/{0,1}a(.*?)>/gm, '');
+    // or make links work
     var port = location.port ? ':' + location.port : ''
-    var linkPrefix = window.location.protocol + window.location.hostname + port;
-    innerHTML = innerHTML.replace(/href="/gmu, 'href="' + linkPrefix);
+    var linkPrefix = location.protocol + location.hostname + port;
+    innerHTML = innerHTML.replace(/href="/gm, 'href="' + linkPrefix);
     return innerHTML;
 }
 
-function formatFilename(namePrefix, nameSuffix) {
+function parseFileNameWithDateTime(namePrefix, nameSuffix) {
     return namePrefix + " " + formatTimeString() + nameSuffix;
 }
 
 function formatTimeString() {
-    var today = new Date();
-    var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
-    var yyyy = today.getFullYear();
-    var hours = today.getHours().toString().length == 1 ? '0' + today.getHours() : today.getHours();
-    var minutes = today.getMinutes().toString().length == 1 ? '0' + today.getMinutes() : today.getMinutes();
-    return dd + '.' + mm + '.' + yyyy + ' ' + hours + '.' + minutes;
+    let d = new Date();
+    d = ['0' + d.getDate(),
+    '0' + (d.getMonth() + 1),
+    '' + d.getFullYear(),
+    '0' + d.getHours(),
+    '0' + d.getMinutes()
+    ].map(component => component.slice(-2));
+    return d.slice(0, 3).join('.') + ' ' + d.slice(3).join('.');
 }
 
 function saveFile(blob, fileName) {
@@ -109,5 +126,6 @@ function saveFile(blob, fileName) {
         link.download = fileName;
         link.click();
         link.remove();
+        URL.revokeObjectURL(blob);
     }
 }
