@@ -1,4 +1,6 @@
 ##Post-content stuff  
+missing internal object properties: https://stackoverflow.com/questions/5932580/how-to-determine-if-a-object-type-is-a-built-in-system-type
+missing prefix handling for a more complex recursion of objects
 ##Working  
     public static class PostContentHelper {
         public static void PopulatePostContent(Dictionary<string, string> postContent, object obj, string? prefix = null) {
