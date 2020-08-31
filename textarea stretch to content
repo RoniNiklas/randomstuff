@@ -1,0 +1,9 @@
+ // Make textboxes stretch to content
+function resize(element) {
+    element.style.height = 'auto';
+    element.style.height = element.scrollHeight + "px";
+}
+$('textarea').each(function () {
+     resize(this);
+     $(this).bind('input', function () {resize(this); });
+});
