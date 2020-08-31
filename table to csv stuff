@@ -10,7 +10,7 @@ function initExcelButtons(buttonText) {
         const dropdownBtn = createElement('button', buttonText, 'excel-dropdown-toggle dropdown-toggle');
         dropdownBtn.dataset.toggle = 'dropdown';
         const csvBtn = createElement('button', 'CSV', 'dropdown-item');
-        const xlsBtn = createElement('button', 'XLS', 'dropdown-item');
+        const xlsBtn = createElement('button', 'XLSX', 'dropdown-item');
 
         $(table).before(dropdown);
         $(dropdown).append(dropdownBtn);
@@ -29,16 +29,16 @@ function initExcelButtons(buttonText) {
 
         $(xlsBtn).click((event) => {
             event.preventDefault();
-            xlsExportOnClick(table, fileNamePrefix);
+            xlsxExportOnClick(table, fileNamePrefix);
         });
     });
 }
 
 function createElement(type, innerText, className) {
-    const btn = document.createElement(type);
-    btn.innerText = innerText;
-    btn.className = className;
-    return btn;
+    const element = document.createElement(type);
+    element.innerText = innerText;
+    element.className = className;
+    return element;
 }
 
 function parseFileNamePrefix() {
@@ -51,59 +51,93 @@ function parseFileNamePrefix() {
 }
 
 function csvExportOnClick(table, fileNamePrefix) {
-    saveFile(parseCSVContent(table), parseFileNameWithDateTime(fileNamePrefix, '.csv'));
+    const copy = copyAndFormatTable(table);
+    saveFile(parseCSVContent(copy), parseFileNameWithDateTime(fileNamePrefix, '.csv'));
 }
 
-function xlsExportOnClick(table, fileNamePrefix) {
-    saveFile(parseXLSContent(table, fileNamePrefix), parseFileNameWithDateTime(fileNamePrefix, '.xls'));
+function xlsxExportOnClick(table, fileNamePrefix) {
+    const copy = copyAndFormatTable(table);
+    saveFile(parseXLSContent(copy), parseFileNameWithDateTime(fileNamePrefix, '.xlsx'));
+}
+
+function copyAndFormatTable(table) {
+    const copy = table.cloneNode(true);
+    // remove delete and select columns
+    var rows = copy.rows;
+    for (var i = 0; i < rows[0].cells.length; i++) {
+        // Getting the column header's classname;
+        var header = rows[0].cells[i].className;
+        // Remove select- and remove-columns 
+        if (header.includes('select-column') || header.includes('remove-column')) {
+            for (var j = 0; j < rows.length; j++) {
+                // Deleting the ith cell of each row 
+                rows[j].deleteCell(i);
+            }
+        }
+    }
+    // Remove the detail-divs from details-summary cells, since multiline isn't supported well by the xlsx library.
+    copy.innerHTML = copy.innerHTML.replace(/(<\/summary>)((.|\n)*?)(?=<\/details>)/gm, '');
+    return copy;
 }
 
 function parseCSVContent(table) {
     var content = [];
-    var rows = table.querySelectorAll("tr");
+    var rows = table.querySelectorAll('tr');
 
     for (var i = 0; i < rows.length; i++) {
-        var row = [], cols = rows[i].querySelectorAll("td, th");
-
+        var row = [], cols = rows[i].querySelectorAll('td, th');
         for (var j = 0; j < cols.length; j++) {
-            var cellText = '"' + cols[j].innerText + ' "';
+            var cellText = '"' + cols[j].innerText.trim() + ' "';
             row.push(cellText);
         }
+
         content.push(row.join(CSV_DELIMITER));
     }
-    content = content.join("\n")
-    return new Blob(["\uFEFF" + content], {
+
+    content = content.join('\n')
+
+    return new Blob(['\uFEFF' + content], {
         type: 'text/csv; charset=utf-18'
     });
 }
 
-function parseXLSContent(table, fileNamePrefix) {
-    var innerHTML = formatTableContents(table.innerHTML);
-    var content = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
-    content += '<head><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>';
-    content += `<x:Name>${fileNamePrefix}</x:Name>`;
-    content += '<x:WorksheetOptions><x:Panes></x:Panes></x:WorksheetOptions></x:ExcelWorksheet>';
-    content += '</x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
-    content += "<table border='1px'>";
-    content += innerHTML;
-    content += '</table></body></html>';
-    return new Blob(["\uFEFF" + content], {
-        type: 'data:application/vnd.ms-excel; charset=utf-18'
+function parseXLSContent(table) {
+    const maxColumnWidth = 30;
+    const wb = XLSX.utils.table_to_book(table);
+    const sheet = wb.Sheets['Sheet1'];
+    const cells = Object.keys(sheet);
+    const cols = {};
+    cells.forEach(cell => {
+        // Insert an empty whitespace string into cells with no data to stop other cells from overflowing into it in excel
+        const cellValue = sheet[cell].v + ' ';
+        sheet[cell].v = cellValue;
+        sheet[cell].t = sheet[cell].t
+            ? 's'
+            : undefined;
+        // Expand column widths based on the content width up to maxColumnWidth
+        const currentColumn = cell.substring(0, cell.search(/\d/));
+        if (currentColumn) {
+            const oldColumnWidth = cols[currentColumn]
+                ? cols[currentColumn].columnWidth
+                : 0;
+            const columnWidth = Math.min(maxColumnWidth, Math.max(oldColumnWidth, cellValue.length));
+            cols[currentColumn] = { columnWidth };
+        };
+    });
+    // insert column widths
+    sheet['!cols'] = Object.values(cols).map(v => {
+        return { wch: v.columnWidth };
+    });
+
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'array' });
+    return new Blob([wbout], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     });
 }
 
-function formatTableContents(innerHTML) {
-    // remove links
-    // innerHTML = innerHTML.replace(/<\/{0,1}a(.*?)>/gm, '');
-    // or make links work
-    var port = location.port ? ':' + location.port : ''
-    var linkPrefix = location.protocol + location.hostname + port;
-    innerHTML = innerHTML.replace(/href="/gm, 'href="' + linkPrefix);
-    return innerHTML;
-}
 
-function parseFileNameWithDateTime(namePrefix, nameSuffix) {
-    return namePrefix + " " + formatTimeString() + nameSuffix;
+function parseFileNameWithDateTime(fileNamePrefix, nameSuffix) {
+    return fileNamePrefix + " " + formatTimeString() + nameSuffix;
 }
 
 function formatTimeString() {
