@@ -16,7 +16,7 @@
 
         regex = new RegExp(regex);
 
-        event.target.value = event.target.value.replace(',', '.').match(regex);
+        event.target.value = event.target.value.replace(',', '.').match(regex); // replace any comma with a dot, since many backend-frameworks do not recognize a comma as a decimal separator, and then match the regex.
     });
 
 
