@@ -7,7 +7,7 @@
         var regex = `^[0-9]*` // all positive integers
 
         if (allowNegativeValues) {
-            regex = `\-{0,1}` + regex; //all positive and negative integers
+            regex = `^\\-{0,1}` + regex.replace("^", ""); //all positive and negative integers
         }
 
         if (decimals > 0) {
@@ -15,6 +15,7 @@
         }
 
         regex = new RegExp(regex);
+
         event.target.value = event.target.value.replace(',', '.').match(regex);
     });
 
