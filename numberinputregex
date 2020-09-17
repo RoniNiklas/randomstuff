@@ -1,4 +1,24 @@
-$('main').on('input', 'input[mode=numeric]', function (event) {
-  var regex = $(event.target).attr('min') >= 0 ? /^[0-9]*\.?[0-9]{0,2}/ : /^\-{0,1}[0-9]*\.?[0-9]{0,2}/; //regex for matching decimal numbers up to 2 decimals. Allow a minus-sign if the input has min of less than 0;
-  event.target.value = event.target.value.replace(',', '.').match(regex);
-})
+    $('main').on('input', 'input[inputmode=numeric]', function (event) {
+        const allowNegativeValues = $(event.target).attr('min') < 0;
+        const decimals = event.target.dataset.decimals
+            ? event.target.dataset.decimals
+            : 3;
+
+        var regex = `^[0-9]*` // all positive integers
+
+        if (allowNegativeValues) {
+            regex = `\-{0,1}` + regex; //all positive and negative integers
+        }
+
+        if (decimals > 0) {
+            regex = regex + `\\.?[0-9]{0,${decimals}}` //allow a dot and X amount of decimals
+        }
+
+        regex = new RegExp(regex);
+        event.target.value = event.target.value.replace(',', '.').match(regex);
+    });
+
+
+e.g.
+
+<input type="text" inputmode="numeric" data-decimals="2" min="-100" />
