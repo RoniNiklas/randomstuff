@@ -1,5 +1,6 @@
+
     $('main').on('input', 'input[inputmode=numeric]', function (event) {
-        const allowNegativeValues = $(event.target).attr('min') < 0;
+        const allowNegativeValues = event.target.dataset.negatives == "true"
         const decimals = event.target.dataset.decimals
             ? event.target.dataset.decimals
             : 3;
@@ -22,4 +23,4 @@
 
 e.g.
 
-<input type="text" inputmode="numeric" data-decimals="2" min="-100" />
+<input type="text" inputmode="numeric" data-decimals="2" data-negatives="true" />
