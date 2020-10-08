@@ -1,0 +1,27 @@
+// InitForAll
+function initSelect2ForAll() {
+    $('select').each(function () {
+        const allowClear = $(this).hasClass('allowClear');
+        const dropdownAutoWidth = $(this).hasClass('autoWidth');
+        if (this.dataset.allowDuplicates == 'true') {
+            parseDuplicateData(this)
+        }
+        $(this).select2({ width: '100%', placeholder: '', dropdownParent: $(this).closest('.modal-body, main'), allowClear, dropdownAutoWidth, templateResult });
+    });
+};
+
+function parseDuplicateData(element) {
+    const children = Array.from(element.children);
+    children.forEach(c => {
+        if (c.dataset.preselected != "true") {
+            $(c).prop('selected', false);
+        }
+    });
+}
+
+function templateResult(data, container) {
+    if (data.element) {
+        $(container).addClass($(data.element).attr("class"));
+    }
+    return data.text;
+}
