@@ -19,9 +19,17 @@ function parseDuplicateData(element) {
     });
 }
 
-function templateResult(data, container) {
+// SALLII CLASSIN SIIRRON VANILLA SELECTISTÄ SELECT2 VETOVALIKKKOON
+function templateResult(data, container) {  
     if (data.element) {
         $(container).addClass($(data.element).attr("class"));
     }
     return data.text;
+}
+
+esm.                       
+  @foreach (var code in allUNClassCodes) {
+    <option value="@code.Code" class="@(code.Code == "9old" ? "invisible" : "")">
+        @code.DisplayCode - @code.TextEn
+    </option>
 }
